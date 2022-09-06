@@ -1,0 +1,7 @@
+.registration-form{
+    padding: 20px;
+}
+.registration-text-error{
+    color: red;
+    text-align: right;
+}
