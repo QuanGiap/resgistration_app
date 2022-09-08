@@ -10,9 +10,9 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-import { checkValidAccount }  from "./AccountSignUp";
-import AccountSignUp from  "./AccountSignUp"
-const steps = ["Create account", "Some of your info", "Review"];
+import AccountSignUp,{ checkValidAccount }  from "./AccountSignUp";
+import UserInformInput,{checkUserInform} from "./UserInformInput";
+const steps = ["Create account", "Some of your info", "Confirme your email"];
 
 export default function RegistrationForm() {
   const [activeStep, setActiveStep] = React.useState(0);
@@ -28,6 +28,7 @@ export default function RegistrationForm() {
     phoneNumber: "",
   });
   const isStepOptional = (step) => {
+    //currently
     return step === -1;
   };
 
@@ -60,6 +61,35 @@ export default function RegistrationForm() {
       ),
       checkFunction:()=>checkValidAccount(textInput.email,textInput.password,textInput.repassword,setTextError),
     },
+    {
+      layOut:(<UserInformInput  
+        email={textInput.email}
+        firstName={textInput.firstName}
+        lastName={textInput.lastName}
+        country={textInput.country}
+        phoneNumber={textInput.phoneNumber}
+        setFirstName={(text) =>
+          setTextInput((prev) => {
+            return { ...prev, firstName: text };
+          })
+        }
+        setLastName={(text) =>
+          setTextInput((prev) => {
+            return { ...prev, lastName: text };
+          })
+        }
+        setCountry={(text) =>
+          setTextInput((prev) => {
+            return { ...prev, country: text };
+          })
+        }
+        setPhoneNumber={(text) =>
+          setTextInput((prev) => {
+            return { ...prev, phoneNumber: text };
+          })
+        }/>),
+      // checkFunction:()=>checkUserInform(textInput.firstName,textInput.lastName,textInput.country,textInput.phoneNumber,setTextError),
+    }
   ];
   const handleNext = (check) => {
     let newSkipped = skipped;
@@ -67,7 +97,7 @@ export default function RegistrationForm() {
       newSkipped = new Set(newSkipped.values());
       newSkipped.delete(activeStep);
     }
-    const isValid = check();
+    const isValid = check() || true;
     if(!isValid) return;
     console.log(isValid);
     setActiveStep((prevActiveStep) => prevActiveStep + 1);

@@ -1,12 +1,34 @@
 const userRouter = require("express").Router();
+const checkObj = require('../tools/checkValidInform');
+const checkValid = checkObj.checkValid;
+const checkEnoughInform = checkObj.checkEnoughInform;
 const bcrypt = require('bcrypt');
-const UserInform = require('../schemas/UserSchema')
-const SPECIAL_CHAR = /[`!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/;
-const SPECIAL_CHAR_EMAIL_INVALID_PREFIX = /[`!@#$%^&*()+\=\[\]{};':"\\|,<>\/?~]/;
-const SPECIAL_CHAR_EMAIL_INVALID_DOMAIN = /[`!@#$%^&*()_+\=\[\]{};':"\\|,.<>\/?~]/;
-const SPECIAL_CHAR_EMAIL_VALID = '_-.';
-const COUNTRY_CODE =
-  "AF AX AL DZ AS AD AO AI AQ AG AR AM AW AU AT AZ BH BS BD BB BY BE BZ BJ BM BT BO BQ BA BW BV BR IO BN BG BF BI KH CM CA CV KY CF TD CL CN CX CC CO KM CG CD CK CR CI HR CU CW CY CZ DK DJ DM DO EC EG SV GQ ER EE ET FK FO FJ FI FR GF PF TF GA GM GE DE GH GI GR GL GD GP GU  GT GG GN GW GY HT HM VA HN HK HU IS IN ID IR IQ IE IM IL IT JM JP JE JO KZ KE KI KP KR KW KG LA LV LB LS LR LY LI LT LU MO MK MG MW MY MV ML MT MH MQ MR MU YT MX FM MD MC MN ME MS MA MZ MM NA NR NP NL NC NZ NI NE NG NU NF MP NO OM PK PW PS PA PG PY PE PH PN PL PT PR QA RE RO RU RW BL SH KN LC MF PM VC WS SM ST SA SN RS SC SL SG SX SK SI SB SO ZA GS SS ES LK SD SR SJ SZ SE CH SY TW TJ TZ TH TL TG TK TO TT TN TR TM TC TV UG UA AE GB US UM UY UZ VU VE VN VG VI WF EH YE ZM ZW";
+const UserInform = require('../schemas/UserSchema');
+const jwt = require('jsonwebtoken');
+const user = require("../schemas/UserSchema");
+const sendEmail = require('../tools/sendMail');
+const generatePass = require('../tools/generateRandomPassword');
+let accountVerifycation={};
+userRouter.patch("/update",async function (req,res,next){
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(" ")[1];
+  if(!token) return res.sendStatus(401);
+  jwt.verify(token,process.env.SECRET_KEY,async(err,data)=>{
+    if(err) return res.status(403).json({message:err.message});
+    const userInform = await UserInform.findById(data.id,{firstName:1});
+    const original = await UserInform.findByIdAndUpdate(data.id,{
+      firstName:req.body.firstName,
+      lastName:req.body.lastName,
+      country:req.body.country,
+      email:req.body.email,
+      phoneNumber:req.body.phoneNumber
+    });
+    return res.status(200).json({
+      message:"token valid",
+      OriginData:original,
+    })
+  });
+})
 
 //default is /user/signin
 userRouter.post("/signin", async function (req, res, next) {
@@ -15,15 +37,28 @@ userRouter.post("/signin", async function (req, res, next) {
     if(!userExist) return sendRes("This email not exist", res, 200);
     const isTheSame = await bcrypt.compare(req.body.password,userExist.password);
     if(!isTheSame) return sendRes("wrong password", res, 200);
-    return res.status(200).json({
-      message:"Login success",
-      id:userExist._id,
-      status:200
-    })
+    const token = jwt.sign({id:userExist._id},process.env.SECRET_KEY);
+    return sendRes("Login success",res,200,true,token);
   }
 )
+userRouter.post('/generate_verify_code',(req,res,next)=>{
+  if(!req.body.email) return sendRes('mail not included',400);
+  const code = generatePass(8);
+  accountVerifycation[req.body.email] = code;
+  console.log(req.body.email);
+  sendEmail(req.body.email,code);
+  setTimeout(()=>{
+    delete accountVerifycation[req.body.email];
+  },60000)
+  return sendRes("sended validation code",res,200,true);
+})
 //default is /user/create
 userRouter.post("/create", async function (req, res, next) {
+  if(!req.body.verificationCode){
+    return sendRes("verify code not in body POST",res,400);
+  }
+  if(accountVerifycation[req.body.email] != req.body.verificationCode) return sendRes("Verify code is not correct or expired",res,200);
+  delete accountVerifycation[req.body.email];
   const typeMissing = checkEnoughInform(req.body);
   if (typeMissing)
     return sendRes(`Missing ${typeMissing} in post body`, res, 400);
@@ -40,108 +75,17 @@ userRouter.post("/create", async function (req, res, next) {
     country:req.body.country,
     phoneNumber:req.body.phoneNumber || "",
   })
-  if(!req.body.isTest)userInform.save().then(console.log("Save success")).catch(err=>console.log(err));
-  return sendRes("User successfully saved",res,201);
+  if(!req.body.isTest){userInform.save().then(console.log("Save success")).catch(err=>console.log(err));}
+  return sendRes("User successfully saved",res,201,true);
 });
 
-function checkValid(body) {
-  if (body.phoneNumber && phoneNumber.length < 8) return "phone number length is not long enough";
-  if (!enoughStringLength(body.firstName, 2, 15))
-    return "First name is not long enough";
-  if (!enoughStringLength(body.lastName, 2, 15))
-    return "Last name is not long enough";
-  const errorPass = checkPassSecure(body.password);
-  if (errorPass) return errorPass;
-  if (COUNTRY_CODE.indexOf(body.country) == -1) return "Country code not valid";
-  const errorEmail = checkEmailValid(body.email);
-  if(errorEmail) return errorEmail;
-  return null;
-}
-
-function checkEmailValid(email){
-  const arrStr = email.split('@');
-  if(arrStr.length!=2) return "email invalid";
-  const prefix = arrStr[0];
-  const domain = arrStr[1];
-  if(prefix.length<2||domain.length<2) return "email is not long enough and/or is invalid";
-  if(!checkSpecialCharStr(prefix,1)) return "email invalid";
-  if(!checkSpecialCharStr(domain,2)) return "email invalid";
-  return null;
-}
-
-function checkPassSecure(password) {
-  if (password.length < 12) return "Password is not long enough";
-  let isLower = false;
-  let isUpper = false;
-  const isSpecial = SPECIAL_CHAR.test(password);
-  let isNumber = false;
-  for (let i = 0; i < password.length && !isUpper; i++) {
-    character = password[i];
-    const charCode = character.charCodeAt(0);
-    if (charCode>=65 && charCode<=90) {
-      isUpper = true;
-    }
-  }
-  for (let i = 0; i < password.length && !isLower; i++) {
-    character = password[i];
-    const charCode = character.charCodeAt(0);
-    if (charCode>=97 && charCode<=122) {
-      isLower = true;
-    }
-  }
-  for (let i = 0; i < password.length && !isNumber; i++) {
-    character = password[i];
-    if (!isNaN(character)) {
-      isNumber = true;
-    }
-  }
-  if (!isLower) return "Missing lower case character in password";
-  if (!isUpper) return "Missing upper case character in password";
-  if (!isSpecial) return "Missing special character in password";
-  if (!isNumber) return "Missing number character in password";
-  return null;
-}
-
-function checkEnoughInform(body) {
-  if (!body.firstName) return "firstName";
-  if (!body.lastName) return "lastName";
-  if (!body.password) return "password";
-  if (!body.email) return "email";
-  if (!body.country) return "country";
-  return null;
-}
-
-function sendRes(message, res, statusCode = 400) {
+function sendRes(message, res, statusCode = 400,isSuccess = false,token=null) {
   res.status(statusCode).json({
     status: statusCode,
     message,
+    success:isSuccess,
+    token:token
   });
-}
-
-function enoughStringLength(str, min = 1, max) {
-  return str.length >= min && str.length <= max;
-}
-
-function checkSpecialCharStr(str,type){
-  // Allowed characters: letters (a-z), numbers, underscores, periods, and dashes.
-  if(type === 1 && SPECIAL_CHAR_EMAIL_INVALID_PREFIX.test(str)) return false;
-  if(type === 2){
-    const arrStr = str.split('.');
-    if(arrStr.length !== 2) return false;
-    if(arrStr[1].length<2) return false;
-    if(SPECIAL_CHAR_EMAIL_INVALID_DOMAIN.test(arrStr[0])) return false;
-    str = arrStr[0];
-  }
-  //  An underscore, period, or dash must be followed by one or more letter or number.
-  if(SPECIAL_CHAR_EMAIL_VALID.indexOf(str[0])!==-1||SPECIAL_CHAR_EMAIL_VALID.indexOf(str[str.length-1])!==-1) return false;
-  for(let i = 1;i<str.length;i++){
-    const character = str[i];
-    const beforeChar = str[i-1];
-    if(SPECIAL_CHAR_EMAIL_VALID.indexOf(character)!==-1 && SPECIAL_CHAR_EMAIL_VALID.indexOf(beforeChar)!==-1){
-      return false;
-    }
-  }
-  return true;
 }
 
 module.exports = userRouter;
