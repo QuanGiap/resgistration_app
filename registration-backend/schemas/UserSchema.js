@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const userSchema = new Schema({
+    hasVerified:{
+        type:Boolean,
+        default:false
+    },
     firstName:{
         type:String,
         require:true
