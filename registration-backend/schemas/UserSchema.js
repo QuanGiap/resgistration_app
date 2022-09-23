@@ -27,6 +27,13 @@ const userSchema = new Schema({
     },
     phoneNumber:{
         type:String,
+    },
+    codeVerication:{
+        type:Object,
+        default:{
+            code:"",
+            date:Date.now()
+        }
     }
 },{timestamps: true})
 const user = mongoose.model('userInform',userSchema);

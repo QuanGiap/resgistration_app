@@ -8,6 +8,8 @@ const mongoString = process.env.DATABASE_URL;
 const PORT = process.env.PORT || 5000;
 mongoose.connect(mongoString,{ useNewUrlParser: true, useUnifiedTopology: true });
 const database = mongoose.connection;
+const cors = require('cors')
+
 
 database.on('error', (error) => {
     console.log(error)
@@ -17,6 +19,8 @@ database.once('connected', () => {
     console.log('Database Connected');
 })
 const app = express();
+
+app.use(cors());
 
 app.use(express.json());
 
