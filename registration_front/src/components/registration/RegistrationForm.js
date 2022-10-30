@@ -10,28 +10,27 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-import AccountSignUp,{ checkValidAccount }  from "./AccountSignUp";
-import UserInformInput,{checkUserInform} from "./UserInformInput";
+import AccountSignUp, { checkValidAccount } from "./AccountSignUp";
+import UserInformInput, { checkUserInform } from "./UserInformInput";
+import ConfirmEmail from "./ConfirmEmail";
+import { useNavigate } from "react-router-dom";
 const steps = ["Create account", "Some of your info", "Confirme your email"];
 
 export default function RegistrationForm() {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set());
-  const [textError, setTextError] = React.useState();
-  const [textInput, setTextInput] = React.useState({
-    firstName: "",
-    lastName: "",
-    password: "",
-    repassword: "",
-    email: "",
-    country: "",
-    phoneNumber: "",
-  });
-  const isStepOptional = (step) => {
-    //currently
-    return step === -1;
-  };
-
+  const [textAnnounce, setTextAnnounce] = React.useState();
+  const [firstName, setFirstName] = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [repassword, setRepassword] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [country, setCountry] = React.useState("");
+  const [phoneNumber, setPhoneNumber] = React.useState("");
+  const [codeVerify, setCodeVerify] = React.useState("");
+  const [isVerified, setVerify] = React.useState(false);
+  const [isSended, setSend] = React.useState(false);
+  const nav = useNavigate();
   const isStepSkipped = (step) => {
     return skipped.has(step);
   };
@@ -39,67 +38,81 @@ export default function RegistrationForm() {
     {
       layOut: (
         <AccountSignUp
-          email={textInput.email}
-          password={textInput.password}
-          repassword={textInput.repassword}
-          setEmail={(text) =>
-            setTextInput((prev) => {
-              return { ...prev, email: text };
-            })
-          }
-          setPassword={(text) =>
-            setTextInput((prev) => {
-              return { ...prev, password: text };
-            })
-          }
-          setRepassword={(text) =>
-            setTextInput((prev) => {
-              return { ...prev, repassword: text };
-            })
-          }
+          email={email}
+          password={password}
+          repassword={repassword}
+          setEmail={(text) => setEmail(text)}
+          setPassword={(text) => setPassword(text)}
+          setRepassword={(text) => setRepassword(text)}
         />
       ),
-      checkFunction:()=>checkValidAccount(textInput.email,textInput.password,textInput.repassword,setTextError),
+      checkFunction: async () =>
+        checkValidAccount(email, password, repassword, setTextAnnounce),
     },
     {
-      layOut:(<UserInformInput  
-        email={textInput.email}
-        firstName={textInput.firstName}
-        lastName={textInput.lastName}
-        country={textInput.country}
-        phoneNumber={textInput.phoneNumber}
-        setFirstName={(text) =>
-          setTextInput((prev) => {
-            return { ...prev, firstName: text };
-          })
-        }
-        setLastName={(text) =>
-          setTextInput((prev) => {
-            return { ...prev, lastName: text };
-          })
-        }
-        setCountry={(text) =>
-          setTextInput((prev) => {
-            return { ...prev, country: text };
-          })
-        }
-        setPhoneNumber={(text) =>
-          setTextInput((prev) => {
-            return { ...prev, phoneNumber: text };
-          })
-        }/>),
-      // checkFunction:()=>checkUserInform(textInput.firstName,textInput.lastName,textInput.country,textInput.phoneNumber,setTextError),
-    }
+      layOut: (
+        <UserInformInput
+          email={email}
+          firstName={firstName}
+          lastName={lastName}
+          country={country}
+          phoneNumber={phoneNumber}
+          setFirstName={(text) => setFirstName(text)}
+          setLastName={(text) => setLastName(text)}
+          setCountry={(text) => setCountry(text)}
+          setPhoneNumber={(text) => setPhoneNumber(text)}
+        />
+      ),
+      checkFunction: async () =>
+        checkUserInform(
+          email,
+          password,
+          firstName,
+          lastName,
+          country,
+          phoneNumber,
+          setTextAnnounce
+        ),
+    },
+    {
+      layOut: (
+        <ConfirmEmail
+        email={email}
+          isVerified={isVerified}
+          setVerify={setVerify}
+          codeVerify={codeVerify}
+          setCodeVerify={setCodeVerify}
+          isSended={isSended}
+          setSend={() => {
+            setSend(true);
+            setTimeout(() => setSend(false), 5000);
+          }}
+          setTextAnnounce={setTextAnnounce}
+        />
+      ),
+      checkFunction: () => {
+        if (!isVerified) {
+          setTextAnnounce("Please verify first");
+        } else setTextAnnounce("");
+        return isVerified;
+      },
+    },
   ];
-  const handleNext = (check) => {
+
+  const isStepOptional = (step) => {
+    //currently
+    return step === stepLayout.length - 1;
+  };
+
+  const handleNext = async (check) => {
     let newSkipped = skipped;
     if (isStepSkipped(activeStep)) {
       newSkipped = new Set(newSkipped.values());
       newSkipped.delete(activeStep);
     }
-    const isValid = check() || true;
-    if(!isValid) return;
-    console.log(isValid);
+    const isValid = (await check?.()) ?? true;
+    if (!isValid) return;
+    setTextAnnounce("");
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
     setSkipped(newSkipped);
   };
@@ -123,9 +136,9 @@ export default function RegistrationForm() {
     });
   };
 
-  const handleReset = () => {
-    setActiveStep(0);
-  };
+  // const handleReset = () => {
+  //   setActiveStep(0);
+  // };
 
   return (
     <Paper elevation={3} className="registration-form">
@@ -151,38 +164,38 @@ export default function RegistrationForm() {
       {activeStep === stepLayout.length ? (
         <React.Fragment>
           <Typography sx={{ mt: 2, mb: 1 }}>
-            All steps completed - you&apos;re finished
+            All steps completed - You can go to Login page
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
             <Box sx={{ flex: "1 1 auto" }} />
-            <Button onClick={handleReset}>Reset</Button>
+            <Button onClick={() => nav("/sign_in")}>Go to Login</Button>
           </Box>
         </React.Fragment>
       ) : (
         <React.Fragment>
-
           {stepLayout[activeStep].layOut}
-
           <Typography className="registration-text-error">
-            {textError}
+            {textAnnounce}
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "row", pt: 2 }}>
             <Button
               color="inherit"
-              disabled={activeStep === 0}
+              disabled={activeStep === 0 || isVerified}
               onClick={handleBack}
               sx={{ mr: 1 }}
             >
               Back
             </Button>
             <Box sx={{ flex: "1 1 auto" }} />
-            {isStepOptional(activeStep) && (
+            {isStepOptional(activeStep) && !isVerified && (
               <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
                 Skip
               </Button>
             )}
 
-            <Button onClick={()=>handleNext(stepLayout[activeStep].checkFunction)}>
+            <Button
+              onClick={() => handleNext(stepLayout[activeStep].checkFunction)}
+            >
               {activeStep === stepLayout.length - 1 ? "Finish" : "Next"}
             </Button>
           </Box>

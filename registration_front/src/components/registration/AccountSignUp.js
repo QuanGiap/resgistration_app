@@ -1,5 +1,6 @@
 import React from "react";
 import { TextField, Grid } from "@mui/material";
+import axios from "axios";
 const SPECIAL_CHAR = /[`!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~]/;
 const SPECIAL_CHAR_EMAIL_INVALID_PREFIX = /[`!@#$%^&*()+\=\[\]{};':"\\|,<>\/?~]/;
 const SPECIAL_CHAR_EMAIL_INVALID_DOMAIN = /[`!@#$%^&*()_+\=\[\]{};':"\\|,.<>\/?~]/;
@@ -61,7 +62,7 @@ function checkSpecialCharStr(str,type){
   }
   return true;
 }
-const checkValidAccount = (email, password, repassword, setErrorText) => {
+const checkValidAccount = async (email, password, repassword, setErrorText) => {
   if (!email) {
     setErrorText("Email is required");
     return false;
@@ -131,7 +132,13 @@ const checkValidAccount = (email, password, repassword, setErrorText) => {
     setErrorText("email invalid");
     return false;
   }
-  setErrorText("");
+  const res = await axios.post("http://localhost:5000/user/checkAccountExist",{
+    email,
+  })
+  if(res.data.data.isExist) {
+    setErrorText("This email is already in use");
+    return false;
+  }
   return true;
 };
 export { checkValidAccount };
