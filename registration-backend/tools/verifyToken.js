@@ -25,4 +25,13 @@ function verifyToken(req, res, next) {
       next();
     });
   }
-  module.exports = {verifyToken,sendRes};
+  function sendResult(e){
+    return sendRes( e.message || "Server error",
+        e.res,
+        e.statusCode || 500,
+        e.success || false,
+        null,
+        e.data);
+  }
+  // function checkPassKey(req,res,next){}
+  module.exports = {verifyToken,sendRes,sendResult};

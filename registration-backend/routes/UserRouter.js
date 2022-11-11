@@ -6,7 +6,7 @@ const checkPassSecureFunct = checkObj.checkPassSecure;
 const verifyToken = require("../tools/verifyToken").verifyToken;
 const sendRes = require("../tools/verifyToken").sendRes;
 const bcrypt = require("bcrypt");
-const db = require("../tools/mySQLConnetion");
+// const db = require("../tools/mySQLConnetion");
 // const UserInform = require("../schemas/UserSchema");
 // const userRepo = require("../Repo/UserRepo");
 const jwt = require("jsonwebtoken");
@@ -14,13 +14,14 @@ const sendVerifyEmail = require("../tools/sendMail").sendVerifyEmail;
 const generatePass = require("../tools/generateRandomPassword");
 const {
   queryPromise,
-  QUERY_FIND_BY_ID,
+  QUERY_FIND_BY_USER_ID,
   QUERY_FIND_BY_EMAIL,
   QUERY_UPDATE_VERIFYCODE_BY_EMAIL,
   QUERY_UPDATE_VERIFYCODE_USER_ID,
   QUERY_UPDATE_VERIFY_EMAIL_BY_USER_ID,
   QUERY_FIND_CODE_BY_USER_ID,
   QUERY_RESET_CODE_BY_CODE_ID,
+  QUERY_UPDATE_USER_INFORM_BY_USER_ID
 } = require("../tools/mySQLQuery");
 // const { query } = require("../tools/mySQLConnetion");
 const MAX_TIMEOUT_VERIFY_CODE = 60; //60 seconds
@@ -32,17 +33,17 @@ userRouter.patch(
     try {
       const queryUpdate =
         "UPDATE sql_shop_data.users_info SET first_name = COALESCE(?,first_name),last_name = COALESCE(?,last_name),country = COALESCE(?,country),phone_number = COALESCE(?,phone_number) WHERE person_id = ?;";
-      const result = await queryPromise(QUERY_FIND_BY_ID, [req.dataToken.id]);
+      const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
       if (result.length == 0)
         return sendRes("Your data is not found in our data", res, 200);
-      db.query(
-        queryUpdate,
+      await queryPromise(
+        QUERY_UPDATE_USER_INFORM_BY_ID,
         [
           req.body.firstName,
           req.body.lastName,
           req.body.country,
           req.body.phoneNumber,
-          req.dataToken.id,
+          req.dataToken.personId,
         ],
         (err) => {
           if (err)
@@ -59,8 +60,10 @@ userRouter.patch(
 //default is /user/signin
 userRouter.post("/sign_in", async (req, res, next) => {
   try {
-    if (!req.body.email || !req.body.password)
-      return sendRes("Missing email or password in body post", res, 400);
+    if (!req.body.email)
+      return sendRes("Missing email", res, 400);
+    if (!req.body.password)
+    return sendRes("Missing password", res, 400);
     const result = await queryPromise(QUERY_FIND_BY_EMAIL, [req.body.email]);
     if (result.length == 0) return sendRes("This email not exist", res, 200);
     const isTheSame = await bcrypt.compare(
@@ -68,7 +71,7 @@ userRouter.post("/sign_in", async (req, res, next) => {
       result[0].password
     );
     if (!isTheSame) return sendRes("wrong password", res, 200);
-    const token = jwt.sign({ id: result[0].personId }, process.env.SECRET_KEY);
+    const token = jwt.sign({ personId: result[0].personId }, process.env.SECRET_KEY);
     return sendRes("Login success", res, 200, true, token);
   } catch (err) {
     return sendRes(err.message, res, 400);
@@ -77,12 +80,12 @@ userRouter.post("/sign_in", async (req, res, next) => {
 
 userRouter.get("/get_userInfo", verifyToken, async function (req, res, next) {
   try {
-    const result = await queryPromise(QUERY_FIND_BY_ID, [req.dataToken.id]);
+    const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
     if (result.length == 0)
       return sendRes("Cannot find the data by your Id", res, 200, false);
     return res.status(200).json({
       message: "token valid",
-      userData: result[0],
+      data: result,
     });
   } catch (err) {
     return sendRes(err.message || "Server error", res, 400);
@@ -156,7 +159,7 @@ userRouter.post(
         code.toString(),
         "VERIFY_NEW_EMAIL",
         req.body.email,
-        req.dataToken.id,
+        req.dataToken.personId,
       ]);
       sendVerifyEmail(req.body.email, code);
       return sendRes("sended validation code", res, 200, true, null, {
@@ -167,7 +170,7 @@ userRouter.post(
         e.message || "Server error",
         res,
         e.statusCode || 500,
-        e.success,
+        e.success||false,
         null,
         { hasSended: false }
       );
@@ -232,7 +235,7 @@ userRouter.patch(
           statusCode: 400,
         };
 
-      const user = await queryPromise(QUERY_FIND_BY_ID, [req.dataToken.id]);
+      const user = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
 
       if (user.length == 0)
         throw {
@@ -242,14 +245,14 @@ userRouter.patch(
         };
 
       const userCode = await queryPromise(QUERY_FIND_CODE_BY_USER_ID, [
-        req.dataToken.id,
+        req.dataToken.personId,
       ]);
       // console.log(userCode[0]);
       if (userCode[0].codeType != "VERIFY_NEW_EMAIL")
         throw {
           message: "This code type is not suitable for verify new email",
           success: true,
-          statusCode: 200,
+          statusCode: 400,
         };
 
       if (req.body.verificationCode != userCode[0].code)
@@ -280,7 +283,7 @@ userRouter.patch(
         "UPDATE sql_shop_data.users_info SET email = ? WHERE person_id = ?;";
       const resultUpdate = await queryPromise(queryUpdateEmail, [
         req.body.email,
-        req.dataToken.id,
+        req.dataToken.personId,
       ]);
       // console.log(resultUpdate)
       // const resultResetCode = await queryPromise(QUERY_RESET_CODE_BY_CODE_ID, [
@@ -295,7 +298,7 @@ userRouter.patch(
         e.message || "Server error",
         res,
         e.statusCode || 500,
-        e.success,
+        e.success||false,
         null,
         { verifySuccess: false }
       );
@@ -364,7 +367,7 @@ userRouter.patch("/verify_code_email", async (req, res, next) => {
       e.message || "Server error",
       res,
       e.statusCode || 500,
-      e.success,
+      e.success || false,
       null,
       { verifySuccess: false }
     );
@@ -402,7 +405,7 @@ userRouter.patch("/verify_code_change_password", async (req, res, next) => {
         statusCode: 200,
       };
     if (userCode[0].codeType !== "PASSWORD_CHANGE")
-      throw { message: "Code type invalid", success: false, statusCode: 200 };
+      throw { message: "This code is not suitable for this type", success: false, statusCode: 200 };
     if (userCode[0].code != req.body.verificationCode)
       throw { message: "Code invalid", success: false, statusCode: 200 };
     if (
@@ -435,7 +438,7 @@ userRouter.patch("/verify_code_change_password", async (req, res, next) => {
       e.message || "Server error",
       res,
       e.statusCode || 500,
-      e.success,
+      e.success||false,
       null,
       { verifySuccess: false }
     );

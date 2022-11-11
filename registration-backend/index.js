@@ -15,6 +15,10 @@ const express = require('express');
 // })
 const db = require('./tools/mySQLConnetion');
 const userRouter = require('./routes/UserRouter');
+const cartRouter = require('./routes/CartRouter');
+const lineItemRouter = require('./routes/CartRouter');
+const orderRouter = require('./routes/CartRouter');
+const productRouter = require('./routes/CartRouter');
 const PORT = process.env.PORT || 5000;
 const cors = require('cors');
 const app = express();
@@ -23,6 +27,10 @@ app.use(cors());
 
 app.use(express.json());
 app.use("/user",userRouter);
+app.use('/cart',cartRouter);
+app.use('/line_item',lineItemRouter);
+app.use('/order',orderRouter);
+app.use('/product',productRouter);
 app.get('/test/getdata',(req,res)=>{
     const query = "SELECT * FROM sql_shop_data.users_info;"
     db.query(query,(err,result)=>{
