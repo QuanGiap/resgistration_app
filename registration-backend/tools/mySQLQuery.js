@@ -28,19 +28,21 @@ const QUERY_UPDATE_CONFIRME_ORDER_BY_CART_ID = "UPDATE sql_shop_data.carts SET i
 const QUERY_CREATE_NEW_LINE_ITEM_BY_PRODUCT_ID_AND_CART_ID_AND_QUANITY = "INSERT INTO sql_shop_data.line_items (cart_id,product_id,quanity) VALUES (?,?,?);";
 const QUERY_GET_LINE_ITEMS_BY_CART_ID_WITH_AMOUNT = "SELECT * FROM sql_shop_data.line_items WHERE cart_id= ? LIMIT ? OFFSET ?;"
 const QUERY_GET_A_LINE_ITEM_BY_LINE_ITEM_ID = "SELECT * FROM sql_shop_data.line_items WHERE item_id = ?;"
+const QUERY_GET_LINE_ITEM_BY_CART_ID_AND_PRODUCT_ID = "SELECT * FROM sql_shop_data.line_items WHERE cart_id = ? AND product_id = ?;;"
 const QUERY_UPDATE_LINE_ITEMS_QUANITY_BY_LINE_ITEM_ID = "UPDATE sql_shop_data.line_items SET quanity = ? WHERE item_id = ?;"
 const QUERY_UPDATE_LINE_ITEMS_TOTAL_PRICE_BY_LINE_ITEM_ID = "UPDATE sql_shop_data.line_items SET total_price = ? WHERE item_id = ?;"
 
 //product query
-const QUERY_GET_PRODUCTS_BY_PRODUCT_ID = "SELECT * FROM sql_shop_data.products WHERE product_id = ?;"
+const QUERY_GET_PRODUCT_BY_PRODUCT_ID = "SELECT * FROM sql_shop_data.products WHERE product_id = ?;"
+const QUERY_GET_PRODUCTS_BY_USER_ID = "SELECT * FROM sql_shop_data.products WHERE person_id = ? ORDER BY order_id DESC LIMIT ? OFFSET ?;"
 const QUERY_INSERT_NEW_PRODUCT_WITH_PERSONID_NAME_DESCRIBE_PRICE_DISCOUNT_QUANITY = "INSERT INTO sql_shop_data.products (person_id,product_name,product_describe,product_price,product_discount,product_quantity) VALUES (?,?,?,?,?,?);"
 const QUERY_UPDATE_PRODUCT_BY_PRODUCT_ID = "UPDATE sql_shop_data.products SET product_name = COALESCE(?,product_name),product_describe = COALESCE(?,product_describe),product_price = COALESCE(?,product_price),product_discount = COALESCE(?,product_discount),product_quantity = COALESCE(?,product_quantity) WHERE product_id = ?;"
 
 //order query
 const QUERY_INSERT_NEW_ORDER_WITH_CART_ID_AND_PERSON_ID = "INSERT INTO sql_shop_data.orders (cart_id,person_id) VALUES (?,?);";
-const QUERY_GET_ORDER_BY_ORDER_ID = "SELECT * WHERE order_id = ?";
-const QUERY_GET_ORDER_BY_CART_ID = "SELECT * WHERE cart_id = ?";
-const QUERY_GET_ORDERS_BY_PERSON_ID = "SELECT * WHERE person_id = ?";
+const QUERY_GET_ORDER_BY_ORDER_ID = "SELECT * FROM sql_shop_data.orders WHERE order_id = ?";
+const QUERY_GET_ORDER_BY_CART_ID = "SELECT * FROM sql_shop_data.orders WHERE cart_id = ?";
+const QUERY_GET_ORDERS_BY_PERSON_ID = "SELECT * FROM sql_shop_data.orders WHERE person_id = ? ORDER BY order_id DESC LIMIT ? OFFSET ?;";
 //a promise type for sql query
 const queryPromise = (queryType, queryValueArray) => {
   return new Promise((resolve, reject) => {
@@ -68,10 +70,12 @@ module.exports = {
   QUERY_UPDATE_CONFIRME_ORDER_BY_CART_ID,
   QUERY_CREATE_NEW_LINE_ITEM_BY_PRODUCT_ID_AND_CART_ID_AND_QUANITY,
   QUERY_GET_LINE_ITEMS_BY_CART_ID_WITH_AMOUNT,
+  QUERY_GET_LINE_ITEM_BY_CART_ID_AND_PRODUCT_ID,
   QUERY_UPDATE_LINE_ITEMS_QUANITY_BY_LINE_ITEM_ID,
   QUERY_UPDATE_LINE_ITEMS_TOTAL_PRICE_BY_LINE_ITEM_ID,
   QUERY_GET_A_LINE_ITEM_BY_LINE_ITEM_ID,
-  QUERY_GET_PRODUCTS_BY_PRODUCT_ID,
+  QUERY_GET_PRODUCT_BY_PRODUCT_ID,
+  QUERY_GET_PRODUCTS_BY_USER_ID,
   QUERY_UPDATE_PRODUCT_BY_PRODUCT_ID,
   QUERY_INSERT_NEW_PRODUCT_WITH_PERSONID_NAME_DESCRIBE_PRICE_DISCOUNT_QUANITY,
   QUERY_GET_ORDERS_BY_PERSON_ID,

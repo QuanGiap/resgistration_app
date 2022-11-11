@@ -31,26 +31,19 @@ userRouter.patch(
   verifyToken,
   async function (req, res, next) {
     try {
-      const queryUpdate =
-        "UPDATE sql_shop_data.users_info SET first_name = COALESCE(?,first_name),last_name = COALESCE(?,last_name),country = COALESCE(?,country),phone_number = COALESCE(?,phone_number) WHERE person_id = ?;";
-      const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
+     const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
       if (result.length == 0)
         return sendRes("Your data is not found in our data", res, 200);
       await queryPromise(
-        QUERY_UPDATE_USER_INFORM_BY_ID,
+        QUERY_UPDATE_USER_INFORM_BY_USER_ID,
         [
           req.body.firstName,
           req.body.lastName,
           req.body.country,
           req.body.phoneNumber,
           req.dataToken.personId,
-        ],
-        (err) => {
-          if (err)
-            return sendRes("Update error, please try again later", res, 200);
+        ]);
           return sendRes("Update success", res, 200, true, null);
-        }
-      );
     } catch (err) {
       return sendRes(err.message, res, 404);
     }

@@ -42,7 +42,7 @@ cartRouter.get("/get_top_carts", verifyToken, async (req, res, next) => {
       [personId, amount, skip]
     );
     sendRes("Get carts success", res, 200, true, null, {
-      get_carts_success: false,
+      get_carts_success: true,
       data: result,
     });
   } catch (e) {
@@ -56,7 +56,7 @@ cartRouter.get("/get_top_carts", verifyToken, async (req, res, next) => {
     );
   }
 });
-cartRouter.get("/get_cart/:cart_id", verifyToken, async (req, res, next) => {
+cartRouter.get("/get_cart_by_cart_id/:cart_id", verifyToken, async (req, res, next) => {
   try {
     // const personId = (req.dataToken.personId || 0);
     const cart_id = parseInt(req.params.cart_id || -1);
@@ -131,7 +131,7 @@ cartRouter.delete(
   async (req, res, next) => {
     try {
       // const personId = (req.dataToken.personId || 0);
-      const cart_id = parseInt(req.body.cart_id || -1);
+      const cart_id = parseInt(req.body.cartId || -1);
       if (cart_id == -1)
         throw { message: "No cart id included", statusCode: 400 };
       // const cart_info = await queryPromise(QUERY_GET_A_CART_BY_CART_ID,[cart_id]);

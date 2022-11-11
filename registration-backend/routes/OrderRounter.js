@@ -3,7 +3,7 @@ const {verifyToken,sendRes} = require('../tools/verifyToken');
 const {queryPromise,QUERY_INSERT_NEW_ORDER_WITH_CART_ID_AND_PERSON_ID,QUERY_GET_ORDER_BY_ORDER_ID,QUERY_GET_ORDER_BY_CART_ID,QUERY_GET_ORDERS_BY_PERSON_ID} = require('../tools/mySQLQuery');
 const { query } = require('../tools/mySQLConnetion');
 
-orderRouter.post('/insert_new_order',verifyToken,async(req,res,next)=>{
+orderRouter.post('/insert_new_order_by_cart_id',verifyToken,async(req,res,next)=>{
     try{
     const cart_id = req.body.cartId;
     const person_id = req.dataToken.personId;
@@ -35,12 +35,15 @@ orderRouter.get('/get_order_by_order_id/:order_id',verifyToken,async(req,res,nex
 
 orderRouter.get('/get_orders_by_person_id',verifyToken,async(req,res,next)=>{
     const person_id = req.dataToken.personId;
-    getOrderByType(res,QUERY_GET_ORDERS_BY_PERSON_ID,[order_id]);
+    const amount = parseInt(req.query.amount || 5);
+    const skip = amount * parseInt(req.query.page || 0);
+    getOrderByType(res,QUERY_GET_ORDERS_BY_PERSON_ID,[person_id,amount,skip]);
 })
+
 const getOrderByType= async (res,queryType,arrInput) =>{
     try{
-        const result = await queryPromise(queryType,[arrInput]);
-        sendRes("Get order success",res,200,true,null,{ got_order_success: false ,data:result});
+        const result = await queryPromise(queryType,arrInput);
+        sendRes("Get order success",res,200,true,null,{ got_order_success: true ,data:result});
     }
     catch(e){
         return sendRes(
