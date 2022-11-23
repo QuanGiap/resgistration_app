@@ -50,7 +50,7 @@ userRouter.patch(
   }
 );
 
-//default is /user/signin
+//default is /user/sign_in
 userRouter.post("/sign_in", async (req, res, next) => {
   try {
     if (!req.body.email)
@@ -67,11 +67,11 @@ userRouter.post("/sign_in", async (req, res, next) => {
     const token = jwt.sign({ personId: result[0].personId }, process.env.SECRET_KEY);
     return sendRes("Login success", res, 200, true, token);
   } catch (err) {
-    return sendRes(err.message, res, 400);
+    return sendRes(err.message, res, 400,true);
   }
 });
 
-userRouter.get("/get_userInfo", verifyToken, async function (req, res, next) {
+userRouter.get("/get_user_info", verifyToken, async function (req, res, next) {
   try {
     const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
     if (result.length == 0)

@@ -9,8 +9,9 @@ const {
   queryPromise,
 } = require("../tools/mySQLQuery");
 
+cartRouter.use(verifyToken);
 //create a new cart for user
-cartRouter.post("/create_new_carts", verifyToken, async (req, res, next) => {
+cartRouter.post("/create_new_cart", async (req, res, next) => {
   try {
     const personId = req.dataToken.personId;
     const result = await queryPromise(QUERY_CREATE_NEW_CART_BY_USER_ID, [
@@ -18,6 +19,7 @@ cartRouter.post("/create_new_carts", verifyToken, async (req, res, next) => {
     ]);
     return sendRes("create cart success", res, 200, true, null, {
       create_cart_success: true,
+      new_cart_id:result.insertId,
     });
   } catch (err) {
     return sendRes(
@@ -32,7 +34,7 @@ cartRouter.post("/create_new_carts", verifyToken, async (req, res, next) => {
 });
 
 //get cart
-cartRouter.get("/get_top_carts", verifyToken, async (req, res, next) => {
+cartRouter.get("/get_top_carts", async (req, res, next) => {
   try {
     const personId = req.dataToken.personId || 0;
     const amount = parseInt(req.query.amount || 5);
@@ -56,16 +58,15 @@ cartRouter.get("/get_top_carts", verifyToken, async (req, res, next) => {
     );
   }
 });
-cartRouter.get("/get_cart_by_cart_id/:cart_id", verifyToken, async (req, res, next) => {
+cartRouter.get("/get_cart_by_cart_id/:cart_id", async (req, res, next) => {
   try {
-    // const personId = (req.dataToken.personId || 0);
     const cart_id = parseInt(req.params.cart_id || -1);
+    const person_id = req.dataToken.personId;
     if (cart_id == -1)
       throw { message: "No cart id included", statusCode: 400 };
     const result = await queryPromise(QUERY_GET_A_CART_BY_CART_ID, [cart_id]);
     if (result.length == 0)
       throw { message: "no cart founds", statusCode: 200, success: true };
-    // if(result[0].person_id != personId) throw({message:"can't get cart from other user",statusCode: 200,success: true});
     return sendRes("get cart success", res, 200, true, null, {
       get_cart_success: true,
       data: result,
@@ -81,9 +82,9 @@ cartRouter.get("/get_cart_by_cart_id/:cart_id", verifyToken, async (req, res, ne
     );
   }
 });
-cartRouter.patch("/confirmed_ordered", verifyToken, async (req, res, next) => {
+cartRouter.patch("/confirmed_ordered", async (req, res, next) => {
   try {
-    const cart_id = req.body.cartId;
+    const cart_id = req.body.cart_id;
 
     if (!cart_id)
       throw { message: "Missing cartId in patch body", statusCode: 400 };
@@ -103,9 +104,9 @@ cartRouter.patch("/confirmed_ordered", verifyToken, async (req, res, next) => {
     );
   }
 });
-cartRouter.patch("/unconfirmed_ordered", verifyToken, async (req, res, next) => {
+cartRouter.patch("/unconfirmed_ordered", async (req, res, next) => {
     try {
-      const cart_id = req.body.cartId;
+      const cart_id = req.body.cart_id;
   
       if (!cart_id)
         throw { message: "Missing cartId in patch body", statusCode: 400 };
@@ -127,16 +128,11 @@ cartRouter.patch("/unconfirmed_ordered", verifyToken, async (req, res, next) => 
   });
 cartRouter.delete(
   "/delete_cart_by_cart_id",
-  verifyToken,
   async (req, res, next) => {
     try {
-      // const personId = (req.dataToken.personId || 0);
-      const cart_id = parseInt(req.body.cartId || -1);
+      const cart_id = parseInt(req.body.cart_id || -1);
       if (cart_id == -1)
         throw { message: "No cart id included", statusCode: 400 };
-      // const cart_info = await queryPromise(QUERY_GET_A_CART_BY_CART_ID,[cart_id]);
-      // if(cart_info.length == 0) throw({message:"no cart founds",statusCode: 200,success: true});
-      // if(cart_info[0].person_id != personId) throw({message:"can't delete cart from other user",statusCode: 200,success: true});
       const result = await queryPromise(QUERY_DELETE_CART_BY_CART_ID, [
         cart_id,
       ]);

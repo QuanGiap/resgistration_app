@@ -5,7 +5,7 @@ const { query } = require('../tools/mySQLConnetion');
 
 orderRouter.post('/insert_new_order_by_cart_id',verifyToken,async(req,res,next)=>{
     try{
-    const cart_id = req.body.cartId;
+    const cart_id = req.body.cart_id;
     const person_id = req.dataToken.personId;
     if(!cart_id) throw ({message:"Missing cartId in body post",statusCode:400});
     await queryPromise(QUERY_INSERT_NEW_ORDER_WITH_CART_ID_AND_PERSON_ID,[cart_id,person_id]);

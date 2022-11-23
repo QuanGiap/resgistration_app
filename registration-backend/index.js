@@ -38,6 +38,9 @@ app.get('/test/getdata',(req,res)=>{
         return res.json(result);
     })
 })
+app.post('/test/redirect',(req,res)=>{
+    res.redirect(307,'http://localhost:5000/user/sign_in');
+})
 app.get('/test/updateData',(req,res)=>{
     const query = "UPDATE sql_shop_data.users_info SET first_name = COALESCE(?,first_name) WHERE person_id = ?;";
     db.query(query,['test',1],(err)=>{
