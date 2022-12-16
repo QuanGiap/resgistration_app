@@ -1,10 +1,11 @@
 const userRouter = require("express").Router();
+require('dotenv').config();
 const checkObj = require("../tools/checkValidInform");
 const checkValidFunct = checkObj.checkValid;
 const checkEnoughInformFunct = checkObj.checkEnoughInform;
 const checkPassSecureFunct = checkObj.checkPassSecure;
-const verifyToken = require("../tools/verifyToken").verifyToken;
-const sendRes = require("../tools/verifyToken").sendRes;
+const verifyToken = require("../tools/middlewares/verifyToken").verifyToken;
+const sendRes = require("../tools/middlewares/verifyToken").sendRes;
 const bcrypt = require("bcrypt");
 // const db = require("../tools/mySQLConnetion");
 // const UserInform = require("../schemas/UserSchema");
@@ -33,7 +34,7 @@ userRouter.patch(
     try {
      const result = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
       if (result.length == 0)
-        return sendRes("Your data is not found in our data", res, 200);
+       throw({message:"Your data is not found in our data", status_code:200});
       await queryPromise(
         QUERY_UPDATE_USER_INFORM_BY_USER_ID,
         [
@@ -45,7 +46,7 @@ userRouter.patch(
         ]);
           return sendRes("Update success", res, 200, true, null);
     } catch (err) {
-      return sendRes(err.message, res, 404);
+      next(err);
     }
   }
 );
@@ -67,7 +68,7 @@ userRouter.post("/sign_in", async (req, res, next) => {
     const token = jwt.sign({ personId: result[0].personId }, process.env.SECRET_KEY);
     return sendRes("Login success", res, 200, true, token);
   } catch (err) {
-    return sendRes(err.message, res, 400,true);
+    next(err);
   }
 });
 
@@ -81,29 +82,24 @@ userRouter.get("/get_user_info", verifyToken, async function (req, res, next) {
       data: result,
     });
   } catch (err) {
-    return sendRes(err.message || "Server error", res, 400);
+    next(err);
   }
 });
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 userRouter.post("/generate_verify_code", async (req, res, next) => {
   try {
-    if (!req.body.email)
-      return sendRes("mail not included", res, 400, false, null, {
-        hasSended: false,
-      });
+        if (!req.body.email) throw {message:"email not included",status_code:400};
     const code = generatePass(8);
     const result = await queryPromise(QUERY_FIND_BY_EMAIL, [req.body.email]);
     if (result.length == 0)
       throw {
         message: "this email is not found in our data",
-        statusCode: 200,
-        isSuccess: true,
+        status_code: 200
       };
     if (result[0].hasVerified)
       throw {
         message: "this email is already verified",
-        statusCode: 200,
-        isSuccess: true,
+        status_code: 200
       };
     const updateResult = await queryPromise(QUERY_UPDATE_VERIFYCODE_BY_EMAIL, [
       code.toString(),
@@ -112,18 +108,11 @@ userRouter.post("/generate_verify_code", async (req, res, next) => {
       req.body.email,
     ]);
     sendVerifyEmail(req.body.email, code);
-    return sendRes("sended validation code", res, 200, true, null, {
+    return sendRes("sended validation code", res, 200, false, null, {
       hasSended: true,
     });
   } catch (err) {
-    return sendRes(
-      err.message || "Server error",
-      res,
-      err.statusCode || 500,
-      err.isSuccess || false,
-      null,
-      { hasSended: err.isSended || false }
-    );
+    next(err);
   }
 });
 
@@ -135,8 +124,7 @@ userRouter.post(
       if (!req.body.email)
         throw {
           message: "New email not included",
-          statusCode: 400,
-          success: false,
+          status_code: 400
         };
       const code = generatePass(8);
       const userExist = await queryPromise(QUERY_FIND_BY_EMAIL, [
@@ -145,8 +133,7 @@ userRouter.post(
       if (userExist.length != 0)
         throw {
           message: "This email is already existed",
-          statusCode: 200,
-          success: true,
+          status_code: 200
         };
       const resultUpdate = await queryPromise(QUERY_UPDATE_VERIFYCODE_USER_ID, [
         code.toString(),
@@ -159,14 +146,7 @@ userRouter.post(
         hasSended: true,
       });
     } catch (e) {
-      return sendRes(
-        e.message || "Server error",
-        res,
-        e.statusCode || 500,
-        e.success||false,
-        null,
-        { hasSended: false }
-      );
+      next(e);
     }
   }
 );
@@ -177,8 +157,7 @@ userRouter.post(
       if (!req.body.email)
         throw {
           message: "Email not included",
-          statusCode: 400,
-          success: false,
+          status_code: 400
         };
       const code = generatePass(8);
       const resultUpdate = await queryPromise(
@@ -188,22 +167,14 @@ userRouter.post(
       if (resultUpdate.affectedRows == 0)
         throw {
           message: "This email not found in our data",
-          statusCode: 200,
-          success: true,
+          status_code: 200
         };
       sendVerifyEmail(req.body.email, code);
       return sendRes("sended validation code", res, 200, true, null, {
         hasSended: true,
       });
     } catch (e) {
-      return sendRes(
-        e.message || "Server error",
-        res,
-        e.statusCode || 500,
-        e.success || false,
-        null,
-        { hasSended: false }
-      );
+      next(e);
     }
   }
 );
@@ -217,15 +188,13 @@ userRouter.patch(
       if (!req.body.email)
         throw {
           message: "New email not included",
-          success: false,
-          statusCode: 400,
+          status_code: 400
         };
 
       if (!req.body.verificationCode)
         throw {
           message: "Verication code not included",
-          success: false,
-          statusCode: 400,
+          status_code: 400
         };
 
       const user = await queryPromise(QUERY_FIND_BY_USER_ID, [req.dataToken.personId]);
@@ -233,8 +202,7 @@ userRouter.patch(
       if (user.length == 0)
         throw {
           message: "Email that need to change not found",
-          success: false,
-          statusCode: 400,
+          status_code: 400
         };
 
       const userCode = await queryPromise(QUERY_FIND_CODE_BY_USER_ID, [
@@ -244,23 +212,20 @@ userRouter.patch(
       if (userCode[0].codeType != "VERIFY_NEW_EMAIL")
         throw {
           message: "This code type is not suitable for verify new email",
-          success: true,
-          statusCode: 400,
+          status_code: 400
         };
 
       if (req.body.verificationCode != userCode[0].code)
         throw {
           message: "Your verication code is invalid",
-          success: true,
-          statusCode: 200,
+          status_code: 200
         };
 
       if (req.body.email != userCode[0].newEmail)
         throw {
           message:
             "This new email is not the same with the email just got verication code.",
-          success: true,
-          statusCode: 200,
+          status_code: 200
         };
 
       if (
@@ -269,8 +234,7 @@ userRouter.patch(
       )
         throw {
           message: "This verify code is expired",
-          success: true,
-          statusCode: 200,
+          status_code: 200
         };
       const queryUpdateEmail =
         "UPDATE sql_shop_data.users_info SET email = ? WHERE person_id = ?;";
@@ -287,14 +251,7 @@ userRouter.patch(
         verifySuccess: true,
       });
     } catch (e) {
-      return sendRes(
-        e.message || "Server error",
-        res,
-        e.statusCode || 500,
-        e.success||false,
-        null,
-        { verifySuccess: false }
-      );
+      next(e);
     }
   }
 );
@@ -302,40 +259,32 @@ userRouter.patch(
 userRouter.patch("/verify_code_email", async (req, res, next) => {
   try {
     if (!req.body.email)
-      throw { message: "Email not included", success: false, statusCode: 400 };
+      throw { message: "Email not included", success: false, status_code: 400 };
 
     if (!req.body.verificationCode)
       throw {
         message: "Verication code not included",
-        success: false,
-        statusCode: 400,
+        status_code: 400
       };
 
-    const emailExist = await queryPromise(QUERY_FIND_BY_EMAIL, [
-      req.body.email,
-    ]);
+    const emailExist = await queryPromise(QUERY_FIND_BY_EMAIL, [req.body.email]);
     if (emailExist.length == 0)
-      throw { message: "Your email not found", success: true, statusCode: 200 };
-    const codeUser = await queryPromise(QUERY_FIND_CODE_BY_USER_ID, [
-      emailExist[0].personId,
-    ]);
+      throw { message: "Your email not found",status_code: 200 };
+    const codeUser = await queryPromise(QUERY_FIND_CODE_BY_USER_ID, [emailExist[0].personId]);
     if (codeUser.length == 0)
       throw {
         message: "Unable to find your code",
-        success: true,
-        statusCode: 200,
+        status_code: 200
       };
     if (codeUser[0].codeType != "VERIFY_EMAIL")
       throw {
         message: "This code type is not correct to verify the email",
-        success: true,
-        statusCode: 200,
+        status_code: 200
       };
     if (codeUser[0].code != req.body.verificationCode)
       throw {
         message: "Your verication code invalid",
-        success: true,
-        statusCode: 200,
+        status_code: 200,
       };
     if (
       Date.now() / 1000 - codeUser[0].lastUpdateInSecond >
@@ -343,72 +292,63 @@ userRouter.patch("/verify_code_email", async (req, res, next) => {
     )
       throw {
         message: "Your verication code is expired",
-        success: true,
-        statusCode: 200,
+        status_code: 200
       };
 
-    await queryPromise(QUERY_RESET_CODE_BY_CODE_ID, [userCode[0].codeId]);
+    await queryPromise(QUERY_RESET_CODE_BY_CODE_ID, [codeUser[0].codeId]);
     const resultVerify = await queryPromise(
       QUERY_UPDATE_VERIFY_EMAIL_BY_USER_ID,
       [emailExist[0].personId]
     );
-    return sendRes("Verify successfully", res, 200, true, null, {
+    return sendRes("Verify successfully", res, 200, false, null, {
       verifySuccess: true,
     });
   } catch (e) {
-    return sendRes(
-      e.message || "Server error",
-      res,
-      e.statusCode || 500,
-      e.success || false,
-      null,
-      { verifySuccess: false }
-    );
+    next(e);
   }
 });
 userRouter.patch("/verify_code_change_password", async (req, res, next) => {
   try {
     if (!req.body.email)
-      throw { message: "Email not included", success: false, statusCode: 400 };
+      throw { message: "Email not included", success: false, status_code: 400 };
 
     if (!req.body.password)
       throw {
         message: "New password not included",
-        success: false,
-        statusCode: 400,
+        status_code: 400
       };
 
     if (!req.body.verificationCode)
       throw {
         message: "Verication code not included",
-        success: false,
-        statusCode: 400,
+        status_code: 400
       };
     const errorPass = checkPassSecureFunct(req.body.password);
     if (errorPass)
-      throw { message: errorPass, success: false, statusCode: 200 };
+      throw { message: errorPass, success: false, status_code: 200 };
+
     const userInfo = await queryPromise(QUERY_FIND_BY_EMAIL, [req.body.email]);
     const userCode = await queryPromise(QUERY_FIND_CODE_BY_USER_ID, [
       userInfo[0]?.personId || -1,
     ]);
+
     if (userCode.length == 0)
       throw {
         message: "code not found in our data",
         success: false,
-        statusCode: 200,
+        status_code: 200,
       };
     if (userCode[0].codeType !== "PASSWORD_CHANGE")
-      throw { message: "This code is not suitable for this type", success: false, statusCode: 200 };
+      throw { message: "This code is not suitable for this type", status_code: 200 };
     if (userCode[0].code != req.body.verificationCode)
-      throw { message: "Code invalid", success: false, statusCode: 200 };
+      throw { message: "Code invalid", status_code: 200 };
     if (
       Date.now() / 1000 - userCode[0].lastUpdateInSecond >
       MAX_TIMEOUT_VERIFY_CODE
     )
       throw {
         message: "Your verication code is expired",
-        success: false,
-        statusCode: 200,
+        status_code: 200,
       };
     const hashPass = await bcrypt.hash(
       req.body.password,
@@ -421,20 +361,13 @@ userRouter.patch("/verify_code_change_password", async (req, res, next) => {
       userInfo[0].personId,
     ]);
     if (resultUpdate.affectedRows == 0)
-      throw { message: "Update error", success: false, statusCode: 200 };
+      throw { message: "Update error", status_code: 200 };
     await queryPromise(QUERY_RESET_CODE_BY_CODE_ID, [userCode[0].codeId]);
-    return sendRes("Verify success", res, 200, true, null, {
+    return sendRes("Verify success", res, 200, false, null, {
       verifySuccess: true,
     });
   } catch (e) {
-    return sendRes(
-      e.message || "Server error",
-      res,
-      e.statusCode || 500,
-      e.success||false,
-      null,
-      { verifySuccess: false }
-    );
+    next(e);
   }
 });
 userRouter.post("/check_account_exist", async (req, res, next) => {
@@ -455,12 +388,12 @@ userRouter.post("/create", async (req, res, next) => {
     const queryInsertNewUser =
       "INSERT sql_shop_data.users_info (last_name,first_name,country,phone_number,email,password) VALUES (?,?,?,?,?,?);";
     if (typeMissing)
-      return sendRes(`Missing ${typeMissing} in post body`, res, 400);
+      throw {message: `Missing ${typeMissing} in post body`, status_code:400};
     const messageInvalid = checkValidFunct(req.body);
-    if (messageInvalid) return sendRes(messageInvalid, res, 400);
+    if (messageInvalid) throw {message: messageInvalid,status_code: 400};
     const result = await queryPromise(QUERY_FIND_BY_EMAIL, [req.body.email]);
     if (result.length != 0)
-      return sendRes("This email is already signed in", res, 200);
+      throw {message: "This email is already signed in",status_code:400};
     const hashPass = await bcrypt.hash(
       req.body.password,
       Number(process.env.SALT_PASS)
@@ -477,7 +410,7 @@ userRouter.post("/create", async (req, res, next) => {
       isSaved: true,
     });
   } catch (err) {
-    return sendRes(err.message, res, 400);
+    next(err);
   }
 });
 

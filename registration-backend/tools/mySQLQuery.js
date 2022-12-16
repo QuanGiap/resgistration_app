@@ -37,7 +37,6 @@ const QUERY_GET_PRODUCT_BY_PRODUCT_ID = "SELECT * FROM sql_shop_data.products WH
 const QUERY_GET_PRODUCTS_BY_USER_ID = "SELECT * FROM sql_shop_data.products WHERE person_id = ? ORDER BY order_id DESC LIMIT ? OFFSET ?;"
 const QUERY_INSERT_NEW_PRODUCT_WITH_PERSONID_NAME_DESCRIBE_PRICE_DISCOUNT_QUANITY = "INSERT INTO sql_shop_data.products (person_id,product_name,product_describe,product_price,product_discount,product_quantity) VALUES (?,?,?,?,?,?);"
 const QUERY_UPDATE_PRODUCT_BY_PRODUCT_ID = "UPDATE sql_shop_data.products SET product_name = COALESCE(?,product_name),product_describe = COALESCE(?,product_describe),product_price = COALESCE(?,product_price),product_discount = COALESCE(?,product_discount),product_quantity = COALESCE(?,product_quantity) WHERE product_id = ?;"
-
 //order query
 const QUERY_INSERT_NEW_ORDER_WITH_CART_ID_AND_PERSON_ID = "INSERT INTO sql_shop_data.orders (cart_id,person_id) VALUES (?,?);";
 const QUERY_GET_ORDER_BY_ORDER_ID = "SELECT * FROM sql_shop_data.orders WHERE order_id = ?";
